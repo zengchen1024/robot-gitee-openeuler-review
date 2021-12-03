@@ -75,6 +75,7 @@ func (bot *robot) isOwnerOfSig(
 		if !cfg.regSigDir.MatchString(file.Filename) {
 			return false, nil
 		}
+
 		pathes.Insert(filepath.Dir(file.Filename))
 	}
 
@@ -136,6 +137,7 @@ func decodeOwnerFile(content string, log *logrus.Entry) sets.String {
 	c, err := base64.StdEncoding.DecodeString(content)
 	if err != nil {
 		log.WithError(err).Error("decode file")
+
 		return owners
 	}
 
@@ -146,6 +148,7 @@ func decodeOwnerFile(content string, log *logrus.Entry) sets.String {
 
 	if err = yaml.Unmarshal(c, &m); err != nil {
 		log.WithError(err).Error("code yaml file")
+
 		return owners
 	}
 

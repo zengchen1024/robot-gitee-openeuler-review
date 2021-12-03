@@ -34,6 +34,7 @@ func (c *configuration) configFor(org, repo string) *botConfig {
 	if i := libconfig.FindConfig(org, repo, v); i >= 0 {
 		return &items[i]
 	}
+
 	return nil
 }
 
@@ -93,6 +94,9 @@ type botConfig struct {
 
 	// UnableCheckingReviewerForPR is a switch used to check whether the pr has been set reviewers when it is open.
 	UnableCheckingReviewerForPR bool `json:"unable_checking_reviewer_for_pr,omitempty"`
+
+	// FreezeFile is the freeze branch of community config files
+	FreezeFile []freezeFile `json:"freeze_file,omitempty"`
 }
 
 func (c *botConfig) setDefault() {
@@ -126,5 +130,34 @@ func (c *botConfig) validate() error {
 		c.regSigDir = *v
 	}
 
+	if len(c.FreezeFile) > 0 {
+		for _, v := range c.FreezeFile {
+			return v.validate()
+		}
+	}
+
 	return c.PluginForRepo.Validate()
+}
+
+type freezeFile struct {
+	Owner  string `json:"owner" required:"true"`
+	Repo   string `json:"repo" required:"true"`
+	Branch string `json:"branch"`
+	Path   string `json:"path" required:"true"`
+}
+
+func (f freezeFile) validate() error {
+	if f.Owner == "" {
+		return fmt.Errorf("the owner configuration item of freeze file can not empty")
+	}
+
+	if f.Repo == "" {
+		return fmt.Errorf("the repo configuration item of freeze file can not empty")
+	}
+
+	if f.Path == "" {
+		return fmt.Errorf("the path configuration item of freeze file can not empty")
+	}
+
+	return nil
 }

@@ -49,7 +49,16 @@ func (bot *robot) AddApprove(cfg *botConfig, e giteeclient.PRNoteEvent, log *log
 		))
 	}
 
-	return bot.cli.AddPRLabel(pr.Org, pr.Repo, pr.Number, approvedLabel)
+	if err := bot.cli.AddPRLabel(pr.Org, pr.Repo, pr.Number, approvedLabel); err != nil {
+		return err
+	}
+
+	freeze, err := bot.getFreezeInfo(pr.Org, pr.BaseRef, cfg.FreezeFile)
+	if err != nil || !freeze.isFrozen() {
+		return err
+	}
+
+	return bot.tryMerge(pr.Org, pr.Repo, e.GetPullRequest(), cfg, freeze.getFrozenMsg(commenter))
 }
 
 func (bot *robot) removeApprove(cfg *botConfig, e giteeclient.PRNoteEvent, log *logrus.Entry) error {

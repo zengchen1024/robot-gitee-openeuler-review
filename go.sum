@@ -32,8 +32,9 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 gitee.com/openeuler/go-gitee v0.0.0-20210824105152-bda4a7aaee37/go.mod h1:qGJhn1KxC5UE4BUmxCE/hTpFfuKbd3U3V9fNROrspfE=
-gitee.com/openeuler/go-gitee v0.0.0-20211126062945-e0d9fc01dbaa h1:fdc3a6eHRIAcNzjuhWQXKmW5XXwWeaGu9rIzPjteCeg=
-gitee.com/openeuler/go-gitee v0.0.0-20211126062945-e0d9fc01dbaa/go.mod h1:qGJhn1KxC5UE4BUmxCE/hTpFfuKbd3U3V9fNROrspfE=
+gitee.com/openeuler/go-gitee v0.0.0-20211112104044-946db51b5fad/go.mod h1:qGJhn1KxC5UE4BUmxCE/hTpFfuKbd3U3V9fNROrspfE=
+gitee.com/openeuler/go-gitee v0.0.0-20211202071536-442b0d098c5f h1:MlbJ2lm8uvMY/WLPXszj2VPlrppx5Nt1gh4+ELtqJIU=
+gitee.com/openeuler/go-gitee v0.0.0-20211202071536-442b0d098c5f/go.mod h1:qGJhn1KxC5UE4BUmxCE/hTpFfuKbd3U3V9fNROrspfE=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
@@ -258,8 +259,8 @@ github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1Cpa
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/opensourceways/community-robot-lib v0.0.0-20211109070107-57f8cc6a2fc6/go.mod h1:wVOxCg37uLrVNcOy/aTh/ip/sSVizPxjhONqqfGERK0=
-github.com/opensourceways/community-robot-lib v0.0.0-20211127100111-9925e60f0b14 h1:pA+E6UL0cwK01d73WYq8cSgkVxUo2LCPVpzzBP8KdNw=
-github.com/opensourceways/community-robot-lib v0.0.0-20211127100111-9925e60f0b14/go.mod h1:+VBJWTddSHGaGqm7weRGVnd9botdes8aDk3avOcI9D0=
+github.com/opensourceways/community-robot-lib v0.0.0-20211115122006-ddc109a64f54 h1:iyYiaQcSemUNOIMaSbBoRZL8Ppe02bnJYa1s5O9hLyg=
+github.com/opensourceways/community-robot-lib v0.0.0-20211115122006-ddc109a64f54/go.mod h1:gDmQfdIEVp3CjPUO3TOg9bBJHQ+EWFGaPx2Um7h/RSA=
 github.com/opensourceways/repo-file-cache v0.0.0-20211109091624-97a8604fa005 h1:QBT9FFRz3lKQyoDFTROFMSX5hUcmiHV4Jod7HrnISo0=
 github.com/opensourceways/repo-file-cache v0.0.0-20211109091624-97a8604fa005/go.mod h1:QLbCvVRPcquiMm9q9RHNfk9lFy+1fkoBWgV339bszhE=
 github.com/opensourceways/robot-gitee-plugin-lib v0.0.0-20210911062539-882a7b92e588/go.mod h1:2ht3IyZ8HdkqEzsmIdMn27JrpzQxWy8ClS3ZFCkG+vU=
