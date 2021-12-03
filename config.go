@@ -95,7 +95,7 @@ type botConfig struct {
 	// UnableCheckingReviewerForPR is a switch used to check whether the pr has been set reviewers when it is open.
 	UnableCheckingReviewerForPR bool `json:"unable_checking_reviewer_for_pr,omitempty"`
 
-	// FreezeFile is the freeze branch of community config files
+	// FreezeFile is the freeze branch of community
 	FreezeFile []freezeFile `json:"freeze_file,omitempty"`
 }
 
@@ -130,10 +130,8 @@ func (c *botConfig) validate() error {
 		c.regSigDir = *v
 	}
 
-	if len(c.FreezeFile) > 0 {
-		for _, v := range c.FreezeFile {
-			return v.validate()
-		}
+	for _, v := range c.FreezeFile {
+		return v.validate()
 	}
 
 	return c.PluginForRepo.Validate()
@@ -142,21 +140,25 @@ func (c *botConfig) validate() error {
 type freezeFile struct {
 	Owner  string `json:"owner" required:"true"`
 	Repo   string `json:"repo" required:"true"`
-	Branch string `json:"branch"`
+	Branch string `json:"branch" required:"true"`
 	Path   string `json:"path" required:"true"`
 }
 
 func (f freezeFile) validate() error {
 	if f.Owner == "" {
-		return fmt.Errorf("the owner configuration item of freeze file can not empty")
+		return fmt.Errorf("missing owner of freeze file")
 	}
 
 	if f.Repo == "" {
-		return fmt.Errorf("the repo configuration item of freeze file can not empty")
+		return fmt.Errorf("missing repo of freeze file")
+	}
+
+	if f.Branch == "" {
+		return fmt.Errorf("missing branch of freeze file")
 	}
 
 	if f.Path == "" {
-		return fmt.Errorf("the path configuration item of freeze file can not empty")
+		return fmt.Errorf("missing path of freeze file")
 	}
 
 	return nil

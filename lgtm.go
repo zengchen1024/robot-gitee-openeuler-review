@@ -76,12 +76,7 @@ func (bot *robot) addLGTM(cfg *botConfig, e giteeclient.PRNoteEvent, log *logrus
 		return err
 	}
 
-	freeze, err := bot.getFreezeInfo(org, pr.BaseRef, cfg.FreezeFile)
-	if err != nil || !freeze.isFrozen() {
-		return err
-	}
-
-	return bot.tryMerge(org, repo, e.GetPullRequest(), cfg, freeze.getFrozenMsg(commenter))
+	return bot.tryMerge(e, cfg, false, log)
 }
 
 func (bot *robot) removeLGTM(cfg *botConfig, e giteeclient.PRNoteEvent, log *logrus.Entry) error {

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"regexp"
 	"strings"
 
 	sdk "gitee.com/openeuler/go-gitee/gitee"
 	"github.com/opensourceways/community-robot-lib/giteeclient"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -15,7 +18,7 @@ const (
 	msgMissingLabels      = "PR does not have these lables: %s"
 	msgInvalidLabels      = "PR should remove these labels: %s"
 	msgNotEnoughLGTMLabel = "PR needs %d lgtm labels and now gets %d"
-	msgFrozenWithOwner    = "PR merge target has been frozen, and can merge only by branch owners: %s"
+	msgFrozenWithOwner    = "The target branch of PR has been frozen and it can be merge only by branch owners: %s"
 )
 
 var regCheckPr = regexp.MustCompile(`(?mi)^/check-pr\s*$`)
@@ -30,28 +33,34 @@ func (bot *robot) handleCheckPR(e *sdk.NoteEvent, cfg *botConfig) error {
 		return nil
 	}
 
-	org, repo := ne.GetOrgRep()
-	pr := e.GetPullRequest()
+	return bot.tryMerge(ne, cfg, true, nil)
+}
 
-	freeze, err := bot.getFreezeInfo(org, pr.GetBase().GetRef(), cfg.FreezeFile)
-	if err != nil {
-		return err
+func (bot *robot) tryMerge(e giteeclient.PRNoteEvent, cfg *botConfig, addComment bool, log *logrus.Entry) error {
+	org, repo := e.GetOrgRep()
+
+	h := mergeHelper{
+		cfg:     cfg,
+		org:     org,
+		repo:    repo,
+		cli:     bot.cli,
+		pr:      e.GetPullRequest(),
+		trigger: e.GetCommenter(),
 	}
 
-	if r := canMerge(pr.Mergeable, ne.GetPRLabels(), cfg, freeze.getFrozenMsg(ne.GetCommenter())); len(r) > 0 {
-		return bot.cli.CreatePRComment(
-			org, repo, ne.GetPRNumber(),
-			fmt.Sprintf(
-				"@%s , this pr is not mergeable and the reasons are below:\n%s",
-				ne.GetCommenter(), strings.Join(r, "\n"),
-			),
-		)
+	if r, ok := h.canMerge(); !ok {
+		if len(r) > 0 && addComment {
+			return bot.cli.CreatePRComment(
+				org, repo, e.GetPRNumber(),
+				fmt.Sprintf(
+					"@%s , this pr is not mergeable and the reasons are below:\n%s",
+					e.GetCommenter(), strings.Join(r, "\n"),
+				),
+			)
+		}
 	}
 
-	return bot.mergePR(
-		pr.NeedReview || pr.NeedTest,
-		org, repo, pr.Number, string(cfg.MergeMethod),
-	)
+	return h.merge()
 }
 
 func (bot *robot) handleLabelUpdate(e *sdk.PullRequestEvent, cfg *botConfig) error {
@@ -60,64 +69,124 @@ func (bot *robot) handleLabelUpdate(e *sdk.PullRequestEvent, cfg *botConfig) err
 	}
 
 	org, repo := giteeclient.GetOwnerAndRepoByPREvent(e)
-	pr := e.GetPullRequest()
 
-	freeze, err := bot.getFreezeInfo(org, pr.GetBase().GetRef(), cfg.FreezeFile)
-	if err != nil {
-		return err
+	h := mergeHelper{
+		cfg:  cfg,
+		org:  org,
+		repo: repo,
+		cli:  bot.cli,
+		pr:   e.GetPullRequest(),
 	}
 
-	return bot.tryMerge(org, repo, pr, cfg, freeze.getFrozenMsg())
-}
-
-func (bot *robot) tryMerge(org, repo string, pr *sdk.PullRequestHook, cfg *botConfig, isFreeze func() string) error {
-	if r := canMerge(pr.Mergeable, nil, cfg, isFreeze); len(r) > 0 {
-		return nil
+	if _, ok := h.canMerge(); ok {
+		return h.merge()
 	}
 
-	return bot.mergePR(
-		pr.NeedReview || pr.NeedTest,
-		org, repo, pr.Number, string(cfg.MergeMethod),
-	)
+	return nil
 }
 
-func (bot *robot) mergePR(needReviewOrTest bool, org, repo string, number int32, method string) error {
-	if needReviewOrTest {
+type mergeHelper struct {
+	pr  *sdk.PullRequestHook
+	cfg *botConfig
+
+	org     string
+	repo    string
+	trigger string
+
+	cli iClient
+}
+
+func (m *mergeHelper) merge() error {
+	number := m.pr.Number
+
+	if m.pr.NeedReview || m.pr.NeedTest {
 		v := int32(0)
 		p := sdk.PullRequestUpdateParam{
 			AssigneesNumber: &v,
 			TestersNumber:   &v,
 		}
 
-		if _, err := bot.cli.UpdatePullRequest(org, repo, number, p); err != nil {
+		if _, err := m.cli.UpdatePullRequest(m.org, m.repo, number, p); err != nil {
 			return err
 		}
 	}
 
-	return bot.cli.MergePR(
-		org, repo, number,
+	return m.cli.MergePR(
+		m.org, m.repo, number,
 		sdk.PullRequestMergePutParam{
-			MergeMethod: method,
+			MergeMethod: string(m.cfg.MergeMethod),
 		},
 	)
 }
 
-func canMerge(mergeable bool, labels sets.String, cfg *botConfig, isFreeze func() string) []string {
-	var reasons []string
-
-	if !mergeable {
-		reasons = append(reasons, msgPRConflicts)
+func (m *mergeHelper) canMerge() ([]string, bool) {
+	if !m.pr.GetMergeable() {
+		return []string{msgPRConflicts}, false
 	}
 
-	if r := isLabelMatched(labels, cfg); len(r) > 0 {
-		reasons = append(reasons, r...)
+	labels := sets.NewString()
+	for _, item := range m.pr.Labels {
+		labels.Insert(item.Name)
 	}
 
-	if r := isFreeze(); r != "" {
-		reasons = append(reasons, r)
+	if r := isLabelMatched(labels, m.cfg); len(r) > 0 {
+		return r, false
 	}
 
-	return reasons
+	freeze, err := m.getFreezeInfo()
+	if err != nil {
+		return nil, false
+	}
+
+	if freeze == nil || !freeze.isFrozen() {
+		return nil, true
+	}
+
+	if m.trigger == "" {
+		return nil, false
+	}
+
+	if freeze.isOwner(m.trigger) {
+		return nil, true
+	}
+
+	return []string{
+		fmt.Sprintf(msgFrozenWithOwner, strings.Join(freeze.Owner, ", ")),
+	}, false
+}
+
+func (m *mergeHelper) getFreezeInfo() (*freezeItem, error) {
+	branch := m.pr.GetBase().GetRef()
+	for _, v := range m.cfg.FreezeFile {
+		fc, err := m.getFreezeContent(v)
+		if err != nil {
+			return nil, err
+		}
+
+		if v := fc.getFreezeItem(m.org, branch); v != nil {
+			return v, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (m *mergeHelper) getFreezeContent(f freezeFile) (freezeContent, error) {
+	var fc freezeContent
+
+	c, err := m.cli.GetPathContent(f.Owner, f.Repo, f.Branch, f.Path)
+	if err != nil {
+		return fc, err
+	}
+
+	b, err := base64.StdEncoding.DecodeString(c.Content)
+	if err != nil {
+		return fc, err
+	}
+
+	err = yaml.Unmarshal(b, &fc)
+
+	return fc, err
 }
 
 func isLabelMatched(labels sets.String, cfg *botConfig) []string {
