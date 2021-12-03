@@ -29,6 +29,14 @@
   1. 自动合入：自动检测PR合入的条件，满足合入条件即自动合入。
   2. 手动检查触发合入：使用**/check-pr**指令可以触发机器人检查PR当前的合入条件，不满足合入条件时给与相应提示，否则PR合入。
 
+- **自动添加`/retest`评论**
+
+  当PR有新的commit提交时自动加`/retest`评论以触发测试任务
+  
+- **检查PR作者是否指定审查者**
+
+  根据配置项当开启检查审查者功能时，PR创建后会检查作者是否指定审查者如果未指定，给予相应提示。
+  
 ### 配置<a id="configuration"/>
 
 例子：
@@ -44,11 +52,13 @@ config_items:
     lgtm_counts_required: 1 #lgtm标签阈值
     labels_for_merge: #PR合入需要的标签
       - ci-pipline-success
-     missing_labels_for_merge: #PR合入时不能存在的标签
+    missing_labels_for_merge: #PR合入时不能存在的标签
       - ci-pipline-failed
-     repos_of_sig: #指定需额外根据sig组配置检查指令使用者权限的仓库
-       - community
-       - TC
+    # 指定在开发者评论/lgtm 或/approve 命令时根据sig 目录下的owners 文件检查开发者的权限。
+    check_permission_based_on_sig_owners: true
+    # Sig 的目录。当 CheckPermissionBasedOnSigOwners 为真时必须设置它。
+    sigs_dir: sig
      merge_method: merge #PR合入时使用的方式，可选项：merge、squash.默认merge.
+     unable_checking_reviewer_for_pr: true #是否检查审核人
 ```
 

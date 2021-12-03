@@ -2,9 +2,8 @@ package main
 
 import (
 	"encoding/base64"
-	"fmt"
 	"path/filepath"
-	"regexp"
+	"strings"
 
 	"github.com/opensourceways/community-robot-lib/giteeclient"
 	"github.com/opensourceways/repo-file-cache/models"
@@ -15,14 +14,13 @@ import (
 
 const ownerFile = "OWNERS"
 
-var reSigsPath = regexp.MustCompile(`^sigs/[-\w]+/`)
-
 func (bot *robot) hasPermission(
 	commenter string,
 	pr giteeclient.PRInfo,
 	cfg *botConfig,
 	log *logrus.Entry,
 ) (bool, error) {
+	commenter = strings.ToLower(commenter)
 	p, err := bot.cli.GetUserPermissionsOfRepo(pr.Org, pr.Repo, commenter)
 	if err != nil {
 		return false, err
@@ -32,31 +30,33 @@ func (bot *robot) hasPermission(
 		return true, nil
 	}
 
-	v, err := bot.getRepoOwners(pr, log)
-	if err != nil {
-		return false, err
-	}
-	if v.Has(commenter) {
+	if bot.isRepoOwners(commenter, pr, log) {
 		return true, nil
 	}
 
-	if len(cfg.ReposOfSig) > 0 {
-		v = sets.NewString(cfg.ReposOfSig...)
-		if v.Has(fmt.Sprintf("%s/%s", pr.Org, pr.Repo)) {
-			return bot.isOwnerOfSig(commenter, pr, cfg, log)
-		}
+	if cfg.CheckPermissionBasedOnSigOwners {
+		return bot.isOwnerOfSig(commenter, pr, cfg, log)
 	}
 
 	return false, nil
 }
 
-func (bot *robot) getRepoOwners(pr giteeclient.PRInfo, log *logrus.Entry) (sets.String, error) {
+func (bot *robot) isRepoOwners(
+	commenter string,
+	pr giteeclient.PRInfo,
+	log *logrus.Entry,
+) bool {
 	v, err := bot.cli.GetPathContent(pr.Org, pr.Repo, ownerFile, pr.BaseRef)
-	if err != nil || v.Content == "" {
-		return nil, err
+	if err != nil {
+		log.Errorf(
+			"get file:%s/%s/%s:%s, err:%s",
+			pr.Org, pr.Repo, pr.BaseRef, ownerFile, err.Error(),
+		)
+		return false
 	}
 
-	return decodeOwnerFile(v.Content, log), nil
+	o := decodeOwnerFile(v.Content, log)
+	return o.Has(commenter)
 }
 
 func (bot *robot) isOwnerOfSig(
@@ -72,7 +72,7 @@ func (bot *robot) isOwnerOfSig(
 
 	pathes := sets.NewString()
 	for _, file := range changes {
-		if !reSigsPath.MatchString(file.Filename) {
+		if !cfg.regSigDir.MatchString(file.Filename) {
 			return false, nil
 		}
 		pathes.Insert(filepath.Dir(file.Filename))
@@ -149,11 +149,13 @@ func decodeOwnerFile(content string, log *logrus.Entry) sets.String {
 		return owners
 	}
 
-	if len(m.Maintainers) > 0 {
-		owners.Insert(m.Maintainers...)
+	for _, v := range m.Maintainers {
+		owners.Insert(strings.ToLower(v))
 	}
-	if len(m.Committers) > 0 {
-		owners.Insert(m.Committers...)
+
+	for _, v := range m.Committers {
+		owners.Insert(strings.ToLower(v))
 	}
+
 	return owners
 }

@@ -29,6 +29,14 @@ The bot provides Code Review-related functionality for the openEuler community. 
   1. Auto-merge: automatically detects the conditions for PR merge, and automatically merges in when the merge conditions are met.
   2. Manual check-trigger merge-in: Use the **/check-pr** command to trigger the robot to check the current merge-in condition of the PR, and give the corresponding prompt when the merge-in condition is not met, otherwise the PR is merged in.
 
+- **Automatically add `/retest` comments**
+
+  When a PR has a new commit, it will automatically add `/retest` comments to trigger the test task
+
+- **Check whether the PR author has designated a reviewer**
+
+  According to the configuration item, when the check reviewer function is turned on, after the PR is created, it will check whether the author has designated a reviewer. If not, it will give corresponding prompts.
+
 ### Configuration<a id="configuration"/>
 
 example:
@@ -46,12 +54,13 @@ config_items:
       - ci-pipline-success
     missing_labels_for_merge: #labels that cannot exist when PR is merged in
       - ci-pipline-failed
-     #specify the repository that needs to additionally check the user rights of the command against the sig group configuration
-    repos_of_sig: 
-      - community
-      - TC
+    # specify it should check the devepler's permission besed on the owners file in sig directory when the developer comment /lgtm or /approve command.
+    check_permission_based_on_sig_owners: true
+    # is the directory of Sig. It must be set when CheckPermissionBasedOnSigOwners is true.
+    sigs_dir: sig
     # merge_method is the method to merge PR.The default method of merge. valid options are squash and merge.
     merge_method: merge
+    unable_checking_reviewer_for_pr: true #Whether to check the reviewer
 ```
 
 

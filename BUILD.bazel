@@ -20,6 +20,7 @@ push_image(
 go_library(
     name = "go_default_library",
     srcs = [
+        "actions.go",
         "approve.go",
         "config.go",
         "lgtm.go",

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	libconfig "github.com/opensourceways/community-robot-lib/config"
 )
@@ -69,10 +71,14 @@ type botConfig struct {
 	// The default value is 1 which means the lgtm label is itself.
 	LgtmCountsRequired uint `json:"lgtm_counts_required,omitempty"`
 
-	// ReposOfSig specifies the repos for which it should check the devepler's permission
+	// CheckPermissionBasedOnSigOwners means it should check the devepler's permission
 	// besed on the owners file in sig directory when the developer comment /lgtm or /approve
-	// command. The format is 'org/repo'.
-	ReposOfSig []string `json:"repos_of_sig,omitempty"`
+	// command. The repository is 'tc' at present.
+	CheckPermissionBasedOnSigOwners bool `json:"check_permission_based_on_sig_owners,omitempty"`
+
+	// SigsDir is the directory of Sig. It must be set when CheckPermissionBasedOnSigOwners is true.
+	SigsDir   string        `json:"sigs_dir,omitempty"`
+	regSigDir regexp.Regexp `json:"-"`
 
 	// LabelsForMerge specifies the labels except approved and lgtm relevant labels
 	// that must be available to merge pr
@@ -84,6 +90,9 @@ type botConfig struct {
 	// MergeMethod is the method to merge PR.
 	// The default method of merge. Valid options are squash and merge.
 	MergeMethod pullRequestMergeMethod `json:"merge_method,omitempty"`
+
+	// UnableCheckingReviewerForPR is a switch used to check whether the pr has been set reviewers when it is open.
+	UnableCheckingReviewerForPR bool `json:"unable_checking_reviewer_for_pr,omitempty"`
 }
 
 func (c *botConfig) setDefault() {
@@ -99,6 +108,22 @@ func (c *botConfig) setDefault() {
 func (c *botConfig) validate() error {
 	if m := c.MergeMethod; m != mergeMethodeMerge && m != mergeMethodSquash {
 		return fmt.Errorf("unsupported merge method:%s", m)
+	}
+
+	if c.CheckPermissionBasedOnSigOwners {
+		if c.SigsDir == "" {
+			return fmt.Errorf("missing sigs_dir")
+		}
+
+		v, err := regexp.Compile(fmt.Sprintf(
+			`^%s/[-\w]+/`,
+			strings.TrimSuffix(c.SigsDir, "/"),
+		))
+		if err != nil {
+			return err
+		}
+
+		c.regSigDir = *v
 	}
 
 	return c.PluginForRepo.Validate()
