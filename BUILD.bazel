@@ -23,6 +23,7 @@ go_library(
         "actions.go",
         "approve.go",
         "config.go",
+        "freeze.go",
         "lgtm.go",
         "main.go",
         "merge.go",

@@ -53,12 +53,7 @@ func (bot *robot) AddApprove(cfg *botConfig, e giteeclient.PRNoteEvent, log *log
 		return err
 	}
 
-	freeze, err := bot.getFreezeInfo(pr.Org, pr.BaseRef, cfg.FreezeFile)
-	if err != nil || !freeze.isFrozen() {
-		return err
-	}
-
-	return bot.tryMerge(pr.Org, pr.Repo, e.GetPullRequest(), cfg, freeze.getFrozenMsg(commenter))
+	return bot.tryMerge(e, cfg, false, log)
 }
 
 func (bot *robot) removeApprove(cfg *botConfig, e giteeclient.PRNoteEvent, log *logrus.Entry) error {
