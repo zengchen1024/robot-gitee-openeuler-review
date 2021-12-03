@@ -23,7 +23,7 @@ const (
 
 var regCheckPr = regexp.MustCompile(`(?mi)^/check-pr\s*$`)
 
-func (bot *robot) handleCheckPR(e *sdk.NoteEvent, cfg *botConfig) error {
+func (bot *robot) handleCheckPR(e *sdk.NoteEvent, cfg *botConfig, log *logrus.Entry) error {
 	ne := giteeclient.NewPRNoteEvent(e)
 
 	if !ne.IsPullRequest() ||
@@ -33,7 +33,7 @@ func (bot *robot) handleCheckPR(e *sdk.NoteEvent, cfg *botConfig) error {
 		return nil
 	}
 
-	return bot.tryMerge(ne, cfg, true, nil)
+	return bot.tryMerge(ne, cfg, true, log)
 }
 
 func (bot *robot) tryMerge(e giteeclient.PRNoteEvent, cfg *botConfig, addComment bool, log *logrus.Entry) error {
@@ -48,7 +48,7 @@ func (bot *robot) tryMerge(e giteeclient.PRNoteEvent, cfg *botConfig, addComment
 		trigger: e.GetCommenter(),
 	}
 
-	if r, ok := h.canMerge(); !ok {
+	if r, ok := h.canMerge(log); !ok {
 		if len(r) > 0 && addComment {
 			return bot.cli.CreatePRComment(
 				org, repo, e.GetPRNumber(),
@@ -63,7 +63,7 @@ func (bot *robot) tryMerge(e giteeclient.PRNoteEvent, cfg *botConfig, addComment
 	return h.merge()
 }
 
-func (bot *robot) handleLabelUpdate(e *sdk.PullRequestEvent, cfg *botConfig) error {
+func (bot *robot) handleLabelUpdate(e *sdk.PullRequestEvent, cfg *botConfig, log *logrus.Entry) error {
 	if giteeclient.GetPullRequestAction(e) != giteeclient.PRActionUpdatedLabel {
 		return nil
 	}
@@ -78,7 +78,7 @@ func (bot *robot) handleLabelUpdate(e *sdk.PullRequestEvent, cfg *botConfig) err
 		pr:   e.GetPullRequest(),
 	}
 
-	if _, ok := h.canMerge(); ok {
+	if _, ok := h.canMerge(log); ok {
 		return h.merge()
 	}
 
@@ -119,7 +119,7 @@ func (m *mergeHelper) merge() error {
 	)
 }
 
-func (m *mergeHelper) canMerge() ([]string, bool) {
+func (m *mergeHelper) canMerge(log *logrus.Entry) ([]string, bool) {
 	if !m.pr.GetMergeable() {
 		return []string{msgPRConflicts}, false
 	}
@@ -133,7 +133,7 @@ func (m *mergeHelper) canMerge() ([]string, bool) {
 		return r, false
 	}
 
-	freeze, err := m.getFreezeInfo()
+	freeze, err := m.getFreezeInfo(log)
 	if err != nil {
 		return nil, false
 	}
@@ -155,11 +155,12 @@ func (m *mergeHelper) canMerge() ([]string, bool) {
 	}, false
 }
 
-func (m *mergeHelper) getFreezeInfo() (*freezeItem, error) {
+func (m *mergeHelper) getFreezeInfo(log *logrus.Entry) (*freezeItem, error) {
 	branch := m.pr.GetBase().GetRef()
 	for _, v := range m.cfg.FreezeFile {
 		fc, err := m.getFreezeContent(v)
 		if err != nil {
+			log.Errorf("get freeze file:%s, err:%s", v.toString(), err.Error())
 			return nil, err
 		}
 

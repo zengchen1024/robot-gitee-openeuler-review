@@ -144,6 +144,10 @@ type freezeFile struct {
 	Path   string `json:"path" required:"true"`
 }
 
+func (f freezeFile) toString() string {
+	return fmt.Sprintf("%s/%s/%s:%s", f.Owner, f.Repo, f.Branch, f.Path)
+}
+
 func (f freezeFile) validate() error {
 	if f.Owner == "" {
 		return fmt.Errorf("missing owner of freeze file")
